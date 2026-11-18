@@ -103,4 +103,5 @@ def _remove_crm_fields():
 	if not frappe.db.exists("Custom Field", _CRM_CUSTOM_FIELD):
 		return
 	frappe.delete_doc("Custom Field", _CRM_CUSTOM_FIELD, ignore_permissions=True)
-	frappe.db.commit()
+	# Runs from setup/uninstall hooks outside a request, so nothing else commits this.
+	frappe.db.commit()  # nosemgrep
