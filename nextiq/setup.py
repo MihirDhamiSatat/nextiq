@@ -57,9 +57,14 @@ def _sync_lead_field():
 
 	has_erpnext = "erpnext" in frappe.get_installed_apps()
 	if has_erpnext:
-		frappe.db.delete("Property Setter", {
-			"doc_type": "Card Scan Log", "field_name": "lead", "property": "hidden",
-		})
+		frappe.db.delete(
+			"Property Setter",
+			{
+				"doc_type": "Card Scan Log",
+				"field_name": "lead",
+				"property": "hidden",
+			},
+		)
 	else:
 		make_property_setter("Card Scan Log", "lead", "hidden", 1, "Check", validate_fields_for_doctype=False)
 	frappe.clear_cache(doctype="Card Scan Log")
