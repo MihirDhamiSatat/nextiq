@@ -9,35 +9,56 @@ NO_LEAD_APP_MSG = (
 )
 
 
+LEAD_APPS = ("erpnext", "crm")
+
+
 def before_install():
-	"""Stop with a clear message instead of a 'No module named ...' error when
-	neither ERPNext nor Frappe CRM is on the site. Either one is enough."""
+	"""NextIQ needs ERPNext or Frappe CRM (either one is enough).
+
+	- Neither on the site and neither in the bench: stop with a short message.
+	- On the bench but not yet on the site: install them first (one or both).
+	"""
 	installed = frappe.get_installed_apps()
-	if "erpnext" not in installed and "crm" not in installed:
-		frappe.throw(NO_LEAD_APP_MSG, title="Frappe CRM or ERPNext required")
+	if any(app in installed for app in LEAD_APPS):
+		return
+
+	in_bench = [app for app in LEAD_APPS if app in frappe.get_all_apps()]
+	if not in_bench:
+		# IncompatibleApp is printed by `bench install-app` as a short message
+		# (no traceback) and aborts the install before anything is created.
+		raise frappe.IncompatibleApp(NO_LEAD_APP_MSG)
+
+	from frappe.installer import install_app
+
+	in_install = frappe.flags.in_install
+	for app in in_bench:
+		install_app(app)
+	# the nested install resets this flag; NextIQ's own install is still running
+	frappe.flags.in_install = in_install
 
 
 def after_install():
 	from nextiq.version_check import check_service_version
 	check_service_version()
-	_sync_crm_fields()
 	_sync_lead_field()
+	_sync_crm_fields()
 	_ensure_lead_destination()
 
 
 def after_migrate():
 	from nextiq.version_check import check_service_version
 	check_service_version()
-	_sync_crm_fields()
 	_sync_lead_field()
+	_sync_crm_fields()
 	_ensure_lead_destination()
 
 
 def after_app_install(app_name):
+	if app_name in ("crm", "erpnext"):
+		_sync_lead_field()
 	if app_name == "crm":
 		_add_crm_fields()
 	if app_name in ("crm", "erpnext"):
-		_sync_lead_field()
 		_ensure_lead_destination()
 
 
@@ -70,7 +91,8 @@ def _ensure_lead_destination():
 
 def _sync_lead_field():
 	"""Card Scan Log.lead links to ERPNext's Lead doctype. Without ERPNext that
-	field is meaningless, so hide it and show the CRM Lead field in its place."""
+	doctype does not exist and Frappe refuses to validate Card Scan Log (which
+	breaks adding the CRM Lead field), so turn it into a hidden plain field."""
 	from frappe.custom.doctype.property_setter.property_setter import make_property_setter
 
 	has_erpnext = "erpnext" in frappe.get_installed_apps()
@@ -80,11 +102,18 @@ def _sync_lead_field():
 			{
 				"doc_type": "Card Scan Log",
 				"field_name": "lead",
-				"property": "hidden",
+				"property": ("in", ("hidden", "fieldtype", "options")),
 			},
 		)
 	else:
-		make_property_setter("Card Scan Log", "lead", "hidden", 1, "Check", validate_fields_for_doctype=False)
+		for prop, value, ptype in (
+			("fieldtype", "Data", "Select"),
+			("options", "", "Text"),
+			("hidden", 1, "Check"),
+		):
+			make_property_setter(
+				"Card Scan Log", "lead", prop, value, ptype, validate_fields_for_doctype=False
+			)
 	frappe.clear_cache(doctype="Card Scan Log")
 	frappe.db.commit()
 
