@@ -85,6 +85,7 @@ app_include_js = "/assets/nextiq/js/nextiq.js"
 # Installation
 # ------------
 
+before_install = "nextiq.setup.before_install"
 after_install = "nextiq.setup.after_install"
 after_migrate = "nextiq.setup.after_migrate"
 

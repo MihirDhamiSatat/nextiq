@@ -34,6 +34,15 @@ class NextIQSettings(Document):
 		so unrelated saves such as the OAuth connect flow never fail on it.
 		"""
 		installed = frappe.get_installed_apps()
+		if "erpnext" not in installed and "crm" not in installed:
+			frappe.throw(
+				_(
+					"NextIQ needs Frappe CRM or ERPNext to create leads. "
+					"Please install at least one of them on this site."
+				),
+				title=_("Frappe CRM or ERPNext required"),
+			)
+
 		requires_erpnext = self.lead_destination in ("ERPNext", "Both")
 		requires_crm = self.lead_destination in ("Frappe CRM", "Both")
 		invalid = (requires_erpnext and "erpnext" not in installed) or (

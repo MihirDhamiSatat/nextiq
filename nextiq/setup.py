@@ -3,6 +3,20 @@ import frappe
 _CRM_CUSTOM_FIELD = "Card Scan Log-crm_lead"
 
 
+NO_LEAD_APP_MSG = (
+	"NextIQ needs Frappe CRM or ERPNext to create leads. "
+	"Please install at least one of them on this site, then install NextIQ."
+)
+
+
+def before_install():
+	"""Stop with a clear message instead of a 'No module named ...' error when
+	neither ERPNext nor Frappe CRM is on the site. Either one is enough."""
+	installed = frappe.get_installed_apps()
+	if "erpnext" not in installed and "crm" not in installed:
+		frappe.throw(NO_LEAD_APP_MSG, title="Frappe CRM or ERPNext required")
+
+
 def after_install():
 	from nextiq.version_check import check_service_version
 	check_service_version()
@@ -39,6 +53,10 @@ def _ensure_lead_destination():
 	"""Pick a valid Create Lead In value for the apps installed on this site
 	(ERPNext if present, else Frappe CRM). NextIQ Settings.validate() does the
 	correction, so a plain save is enough."""
+	from nextiq.nextiq.doctype.nextiq_settings.nextiq_settings import get_default_lead_destination
+
+	if not get_default_lead_destination():
+		return  # neither app installed; the Settings form shows a message instead
 	try:
 		settings = frappe.get_single("NextIQ Settings")
 		before = settings.lead_destination

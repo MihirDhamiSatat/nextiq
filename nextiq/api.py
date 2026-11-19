@@ -704,8 +704,8 @@ def scan_callback(job_id, cb_secret, success, data=None, error=None,
 					# all. Raise so this lands in the same Failed/notify/feedback path as
 					# every other lead-creation error instead of silently reporting Success.
 					raise RuntimeError(
-						f"Lead Destination is set to {destination!r}, but the required app "
-						"is not installed on this site. Update NextIQ Settings."
+						"Cannot create a lead: install Frappe CRM or ERPNext on this site and "
+						f"check 'Create Lead In' in NextIQ Settings (currently {destination!r})."
 					)
 
 				if make_erpnext:
